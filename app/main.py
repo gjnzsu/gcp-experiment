@@ -46,10 +46,14 @@ def generate(request: GenerateRequest):
 
     model = request.model or DEFAULT_MODEL
     try:
-        response = model_client.models.generate_content(
-            model=model,
-            contents=request.prompt,
-        )
+        if model.endswith("-maas"):
+            chat = model_client.chats.create(model=model)
+            response = chat.send_message(request.prompt)
+        else:
+            response = model_client.models.generate_content(
+                model=model,
+                contents=request.prompt,
+            )
     except Exception as exc:
         raise HTTPException(status_code=502, detail="Model request failed") from exc
 

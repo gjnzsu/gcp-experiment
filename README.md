@@ -14,8 +14,9 @@ gcloud auth application-default login
 Set environment variables:
 
 ```bash
-set GOOGLE_CLOUD_PROJECT=your-project-id
+set GOOGLE_CLOUD_PROJECT=gen-lang-client-0896070179
 set GOOGLE_CLOUD_LOCATION=global
+set GOOGLE_GENAI_USE_VERTEXAI=True
 set LLM_MODEL=gemini-2.5-flash
 ```
 

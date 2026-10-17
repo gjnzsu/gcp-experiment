@@ -46,7 +46,7 @@ The HTTP contract is kept separate from the Google model client so a future expe
 After enabling the model's **API Service** in Model Garden, switch the model without changing the HTTP API:
 
 ```powershell
-$env:LLM_MODEL="deepseek-v4.1-flash-maas"
+$env:LLM_MODEL="publishers/deepseek-ai/models/deepseek-v4.1-flash-maas"
 ```
 
 MaaS model IDs ending in `-maas` use the Google Gen AI SDK chat interface. Google-hosted Gemini models continue to use `generate_content`.

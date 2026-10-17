@@ -80,6 +80,51 @@ DeepSeek V4.1 Flash MaaS
 
 The public backend contract remains `POST /v1/generate`; provider-specific endpoint paths and request formats stay inside the backend adapter.
 
+## Milestone 1: Vertex AI backend foundations
+
+This milestone establishes the first working backend patterns for the experiment.
+
+### Validated flows
+
+```text
+PowerShell client
+  → FastAPI backend
+    → Google Gen AI SDK
+      → Vertex AI / Agent Platform
+        → Gemini publisher model or Model Garden MaaS model
+```
+
+- Gemini 2.5 Flash through the Google publisher model API.
+- DeepSeek V4.1 Flash through Model Garden MaaS using the same Google Gen AI SDK.
+- Local authentication through Application Default Credentials (ADC).
+- Project IAM using `roles/aiplatform.user`; no service account is needed for local development.
+- A stable backend contract independent of the provider-specific model API.
+- Structured JSON output with an explicit schema and Pydantic validation.
+- Gemini streaming output through Server-Sent Events (SSE).
+
+### Current endpoints
+
+| Endpoint | Purpose |
+| --- | --- |
+| `GET /healthz` | Service health check |
+| `POST /v1/generate` | Normal text generation |
+| `POST /v1/classify` | Gemini 2.5 structured classification |
+| `POST /v1/generate/stream` | Gemini streaming response over SSE |
+
+### Key design conclusions
+
+- FastAPI is the backend server exposed to the PowerShell or frontend client.
+- The Google Gen AI SDK is a client library inside the FastAPI process.
+- Vertex AI / Agent Platform is the upstream managed model service.
+- Gemini publisher models and MaaS models share the platform and authentication, but their underlying endpoint contracts can differ.
+- `generateContent`, chat, streaming, and batch describe different API interfaces or execution modes; they are not interchangeable model types.
+- Schema controls output shape. A knowledge base supplies factual or business context. Backend validation checks whether the model response is acceptable.
+- Streaming keeps the client connection open while chunks are forwarded. Batch submits asynchronous work and reads results later.
+
+### Checkpoint
+
+Milestone 1 is complete. The repository is ready to be parked until a new use case is selected. Future experiments can build on this baseline by adding function calling, RAG, evaluation, audit logging, model comparison, or deployment to Cloud Run.
+
 ### Chat, streaming, and batch
 
 - **Chat** describes the message or conversation interface. It can be single-turn or multi-turn.

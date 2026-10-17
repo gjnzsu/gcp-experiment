@@ -38,6 +38,7 @@ curl -X POST http://localhost:8000/v1/generate ^
 
 - `GET /healthz`
 - `POST /v1/generate`
+- `POST /v1/generate/stream` — Gemini streaming response using SSE
 - `POST /v1/classify` — Gemini 2.5 structured JSON output
 
 The HTTP contract is kept separate from the Google model client so a future experiment can add a Model Garden endpoint adapter without changing clients.
@@ -78,6 +79,22 @@ DeepSeek V4.1 Flash MaaS
 ```
 
 The public backend contract remains `POST /v1/generate`; provider-specific endpoint paths and request formats stay inside the backend adapter.
+
+### Chat, streaming, and batch
+
+- **Chat** describes the message or conversation interface. It can be single-turn or multi-turn.
+- **Streaming** returns one request's output incrementally as it is generated. This POC uses Server-Sent Events (SSE).
+- **Batch** submits many requests for asynchronous processing and reads the results later. It is useful for offline workloads, not interactive API responses.
+
+Try the streaming endpoint with Gemini:
+
+```powershell
+$env:LLM_MODEL="gemini-2.5-flash"
+
+curl.exe -N -X POST http://localhost:8000/v1/generate/stream `
+  -H "Content-Type: application/json" `
+  -d '{"prompt":"Explain event-driven architecture in five paragraphs."}'
+```
 
 ### Structured output experiment
 

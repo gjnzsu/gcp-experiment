@@ -1,5 +1,6 @@
 import json
 from fastapi import FastAPI, HTTPException
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 from google import genai
 from google.genai import types
@@ -99,6 +100,41 @@ def generate(request: GenerateRequest):
         raise HTTPException(status_code=502, detail="Model request failed") from exc
 
     return {"text": response.text, "model": model}
+
+
+@app.post("/v1/generate/stream")
+def generate_stream(request: GenerateRequest):
+    model_client = get_client()
+    if model_client is None:
+        raise HTTPException(
+            status_code=503,
+            detail="GOOGLE_CLOUD_PROJECT is not configured",
+        )
+
+    model = request.model or DEFAULT_MODEL
+    if model.endswith("-maas"):
+        raise HTTPException(
+            status_code=400,
+            detail="The streaming POC currently supports Gemini models only",
+        )
+
+    def chunks():
+        try:
+            for chunk in model_client.models.generate_content_stream(
+                model=model,
+                contents=request.prompt,
+            ):
+                if chunk.text:
+                    yield f"data: {json.dumps({'text': chunk.text})}\n\n"
+            yield "data: [DONE]\n\n"
+        except Exception as exc:
+            yield f"event: error\ndata: {json.dumps({'detail': str(exc)})}\n\n"
+
+    return StreamingResponse(
+        chunks(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "Connection": "keep-alive"},
+    )
 
 
 @app.post("/v1/classify", response_model=Classification)

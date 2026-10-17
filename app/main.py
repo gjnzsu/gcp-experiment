@@ -1,6 +1,8 @@
+import json
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field
 from google import genai
+from google.genai import types
 from google.genai.types import HttpOptions
 import os
 
@@ -28,6 +30,45 @@ def get_client():
 class GenerateRequest(BaseModel):
     prompt: str = Field(min_length=1)
     model: str | None = None
+
+
+class ClassifyRequest(BaseModel):
+    text: str = Field(min_length=1)
+
+
+class Classification(BaseModel):
+    category: str
+    priority: str
+    summary: str
+    requires_human_review: bool
+
+
+CLASSIFICATION_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "category": {
+            "type": "string",
+            "enum": [
+                "payment_issue",
+                "account_access",
+                "fraud_alert",
+                "general_question",
+            ],
+        },
+        "priority": {
+            "type": "string",
+            "enum": ["low", "medium", "high"],
+        },
+        "summary": {"type": "string"},
+        "requires_human_review": {"type": "boolean"},
+    },
+    "required": [
+        "category",
+        "priority",
+        "summary",
+        "requires_human_review",
+    ],
+}
 
 
 @app.get("/healthz")
@@ -58,3 +99,45 @@ def generate(request: GenerateRequest):
         raise HTTPException(status_code=502, detail="Model request failed") from exc
 
     return {"text": response.text, "model": model}
+
+
+@app.post("/v1/classify", response_model=Classification)
+def classify(request: ClassifyRequest):
+    model_client = get_client()
+    if model_client is None:
+        raise HTTPException(
+            status_code=503,
+            detail="GOOGLE_CLOUD_PROJECT is not configured",
+        )
+
+    prompt = f"""Classify this customer service case.
+
+Rules:
+- payment_issue: failed, declined, or duplicated payment
+- fraud_alert: suspected unauthorized activity
+- account_access: login or account lock problems
+- general_question: anything else
+- Use high priority when money may be lost or fraud is suspected.
+- Set requires_human_review=true for fraud_alert or high priority.
+
+Customer case:
+{request.text}
+"""
+
+    try:
+        response = model_client.models.generate_content(
+            model="gemini-2.5-flash",
+            contents=prompt,
+            config=types.GenerateContentConfig(
+                response_mime_type="application/json",
+                response_schema=CLASSIFICATION_SCHEMA,
+            ),
+        )
+        return Classification.model_validate(json.loads(response.text))
+    except (json.JSONDecodeError, ValueError) as exc:
+        raise HTTPException(
+            status_code=502,
+            detail="Model returned an invalid classification",
+        ) from exc
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail="Model request failed") from exc

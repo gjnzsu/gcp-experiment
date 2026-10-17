@@ -38,6 +38,7 @@ curl -X POST http://localhost:8000/v1/generate ^
 
 - `GET /healthz`
 - `POST /v1/generate`
+- `POST /v1/classify` — Gemini 2.5 structured JSON output
 
 The HTTP contract is kept separate from the Google model client so a future experiment can add a Model Garden endpoint adapter without changing clients.
 
@@ -77,3 +78,15 @@ DeepSeek V4.1 Flash MaaS
 ```
 
 The public backend contract remains `POST /v1/generate`; provider-specific endpoint paths and request formats stay inside the backend adapter.
+
+### Structured output experiment
+
+The classification endpoint uses Gemini 2.5 with an explicit JSON schema. The schema controls the response shape; it is not a knowledge base. The backend validates the returned JSON with Pydantic before returning it to the caller.
+
+```powershell
+Invoke-RestMethod `
+  -Method Post `
+  -Uri http://localhost:8000/v1/classify `
+  -ContentType "application/json" `
+  -Body '{"text":"My card payment failed twice at a restaurant."}'
+```
